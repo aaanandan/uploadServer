@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Folder Upload</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.2/axios.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .upload-container {
+        border: 2px dashed #ccc;
+        padding: 20px;
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .progress-bar {
+        width: 100%;
+        height: 20px;
+        background-color: #f0f0f0;
+        border-radius: 10px;
+        overflow: hidden;
+        margin: 10px 0;
+      }
+      .progress {
+        width: 0%;
+        height: 100%;
+        background-color: #4caf50;
+        transition: width 0.3s ease-in-out;
+      }
+      .file-tree {
+        margin-top: 20px;
+        text-align: left;
+      }
+      .file-tree ul {
+        list-style-type: none;
+        padding-left: 20px;
+      }
+      .file-tree li {
+        margin: 5px 0;
+      }
+      .folder {
+        color: #2196f3;
+        cursor: pointer;
+      }
+      .file {
+        color: #4caf50;
+      }
+      .hidden {
+        display: none;
+      }
+      .upload-button {
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 10px;
+      }
+      .upload-button:hover {
+        background-color: #45a049;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="upload-container">
+      <h2>Upload Folders</h2>
+      <input type="file" id="folderInput" webkitdirectory directory multiple />
+      <div>
+        <button class="upload-button" onclick="uploadFiles()">Upload</button>
+      </div>
+      <div class="progress-bar">
+        <div class="progress" id="progressBar"></div>
+      </div>
+      <div id="status"></div>
+    </div>
+
+    <div class="file-tree">
+      <h3>Upload Results</h3>
+      <div id="fileList"></div>
+    </div>
+
+    <script>
+      // Reset UI state when page loads
+      document.addEventListener("DOMContentLoaded", function () {
+        resetUI();
+      });
+
+      function resetUI() {
+        const input = document.getElementById("folderInput");
+        const progressBar = document.getElementById("progressBar");
+        const status = document.getElementById("status");
+        const fileList = document.getElementById("fileList");
+
+        input.value = "";
+        progressBar.style.width = "0%";
+        status.textContent = "";
+        fileList.innerHTML = "";
+      }
+
+      async function uploadFiles() {
+        const input = document.getElementById("folderInput");
+        const progressBar = document.getElementById("progressBar");
+        const status = document.getElementById("status");
+        const fileList = document.getElementById("fileList");
+
+        if (input.files.length === 0) {
+          status.textContent = "Please select files to upload";
+          return;
+        }
+
+        // Clear previous results
+        fileList.innerHTML = "";
+        progressBar.style.width = "0%";
+        status.textContent = "";
+
+        const formData = new FormData();
+
+        // Log files being uploaded for debugging
+        console.log("Files to upload:", input.files);
+
+        for (const file of input.files) {
+          // Use webkitRelativePath to maintain folder structure
+          file.name = file.webkitRelativePath;
+          console.log("Adding file:", file.webkitRelativePath);
+          formData.append("files[]", file, file.webkitRelativePath);
+          formData.append("paths", file.webkitRelativePath); // Send relative paths
+        }
+
+        try {
+          console.log("formdata", formData.values());
+          const response = await axios.post("/upload", formData, {
+            onUploadProgress: (progressEvent) => {
+              const percentage =
+                (progressEvent.loaded * 100) / progressEvent.total;
+              progressBar.style.width = percentage + "%";
+              status.textContent = "Uploading: " + Math.round(percentage) + "%";
+            },
+          });
+
+          status.textContent = "Upload complete!";
+
+          // After upload, fetch and display the current file structure
+          await refreshFileList(response);
+
+          // Reset file input for next upload
+          input.value = "";
+        } catch (error) {
+          console.error("Upload error:", error);
+          status.textContent = "Error: " + error.message;
+        }
+      }
+
+      async function refreshFileList(response) {
+        try {
+          // const response = await axios.get("/files");
+          const fileList = document.getElementById("fileList");
+          console.log(response.data);
+          if (response.data.files && response.data.files.length > 0) {
+            fileList.innerHTML = generateFileTree(response.data.files);
+          } else {
+            fileList.innerHTML = "<p>No files uploaded in this session.</p>";
+          }
+        } catch (error) {
+          console.error("Error fetching file list:", error);
+          document.getElementById("fileList").innerHTML =
+            "<p>Error loading file list: " + error.message + "</p>";
+        }
+      }
+
+      function generateFileTree(files) {
+        if (!files || files.length === 0) return "";
+
+        let html = "<ul>";
+        for (const file of files) {
+          {
+            html += `<li><span class="file">📄 ${file}</span></li>`;
+          }
+        }
+        html += "</ul>";
+        return html;
+      }
+
+      function toggleFolder(element) {
+        const ul = element.nextElementSibling;
+        ul.classList.toggle("hidden");
+      }
+    </script>
+  </body>
+</html>
