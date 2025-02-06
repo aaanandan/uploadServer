@@ -134,14 +134,19 @@
 
         try {
           console.log("formdata", formData.values());
-          const response = await axios.post("/upload", formData, {
-            onUploadProgress: (progressEvent) => {
-              const percentage =
-                (progressEvent.loaded * 100) / progressEvent.total;
-              progressBar.style.width = percentage + "%";
-              status.textContent = "Uploading: " + Math.round(percentage) + "%";
-            },
-          });
+          const response = await axios.post(
+            "https://zenphoto.kailasamailer.com/upload",
+            formData,
+            {
+              onUploadProgress: (progressEvent) => {
+                const percentage =
+                  (progressEvent.loaded * 100) / progressEvent.total;
+                progressBar.style.width = percentage + "%";
+                status.textContent =
+                  "Uploading: " + Math.round(percentage) + "%";
+              },
+            }
+          );
 
           status.textContent = "Upload complete!";
 
