@@ -1,1 +1,2 @@
-node server.mjs
+run server by 
+```node server.mjs```

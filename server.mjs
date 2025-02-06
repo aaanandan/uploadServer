@@ -2,11 +2,17 @@ import { access, mkdir, readdir } from "node:fs";
 import express from "express";
 import fileUpload from "express-fileupload";
 import path from "node:path";
-const app = express();
-const port = 3000;
-
+import { appendToGoogleSheet } from "./updateGoogelSheet.mjs";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+
+const app = express();
+
+const port = 5500;
+const uploadFolder = "uploads";
+const spreadsheetId = "1ZPhvFi0vC3TCy2l7XAzgdSuf2Gp6HDXuvah7pqlFQ1I"; // Replace with your sheet ID
+const sheetName = "Sheet4"; // Replace with the range you want to update
+const zentURL = "https://zenphoto.kailasamailer.com/albums/";
 export const __filename = fileURLToPath(import.meta.url);
 export const __dirname = dirname(__filename);
 
@@ -43,6 +49,17 @@ app.post("/upload", async (req, res) => {
     }
 
     const uploadedFiles = [];
+    const rows = [
+      [
+        "FileName",
+        "RelativePath",
+        "FolderName",
+        "SubSectionTitle",
+        "ZenImageURL",
+      ],
+    ]; // Ensure headers match your Google Sheet
+
+    // FileName	RelativePath	FolderName	SubSectionTitle	ZenImageURL
     const files = req.files["files[]"];
     const filePaths = Array.isArray(req.body.paths)
       ? req.body.paths
@@ -82,12 +99,22 @@ app.post("/upload", async (req, res) => {
 
       // console.log(`File uploaded to: ${fullPath}`); // Debug log
       uploadedFiles.push(relativePath);
+      const filename = path.basename(relativePath);
+      const dirName = path.dirname(relativePath);
+      const zenImageURL = zentURL + relativePath;
+      rows.push([filename, relativePath, dirName, dirName, zenImageURL]);
     });
+
+    appendToGoogleSheet(spreadsheetId, sheetName, rows);
+    // console.log(rows);
+
     res.json({
       status: true,
       message: "Files uploaded successfully",
       files: uploadedFiles,
     });
+
+    // Example Usage
   } catch (err) {
     console.error("Upload error:", err);
     res.status(500).json({
@@ -122,7 +149,7 @@ async function listFilesRecursively(dir) {
       for (const file of files) {
         const fullPath = path.join(dir, file.name);
         const relativePath = path.relative(
-          path.join(__dirname, "uploads"),
+          path.join(__dirname, upload_folder),
           fullPath
         );
 
